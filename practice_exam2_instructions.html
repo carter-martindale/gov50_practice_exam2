@@ -368,12 +368,12 @@ summary {
 </div>
 
 
-<p>The <code>US_births_2000_2014</code> dataset from the <code>fivethirtyeight</code> package contains information on how many people were born in the US on every day from 1/1/2000 until 12/31/2014. Let’s use it for this practice exam!</p>
+<p>The <code>US_births_2000_2014</code> dataset from the <code>fivethirtyeight</code> package contains information on how many people were born in the US every day from 1/1/2000 until 12/31/2014. Let’s use it for this practice exam!</p>
 <div id="question-1" class="section level2">
 <h2>Question 1</h2>
 <p>Replicate the following plot below. Here are a few hints:</p>
 <ol style="list-style-type: decimal">
-<li>Notice you have a plot by year with a summarized variable (median births) for each month. That is, a single row in the dataset for each month-year combination. How can you achieve this data structure?</li>
+<li>Notice you have a plot by year with a summarized variable (mean births) for each month. That is, a single row in the dataset for each month-year combination. How can you achieve this data structure?</li>
 <li>The theme is <code>theme_minimal()</code>.</li>
 <li>The month names are too long to show them all at once, so I used a <code>scale</code> function with <code>breaks</code> and <code>labels</code> arguments to display only the three below. Hint: the blank month labels are actually empty strings.</li>
 <li>If you notice your year plots are too close together, you can try <code>theme(panel.spacing = unit(0.8, &quot;lines&quot;)</code> and change 0.8 to your liking.</li>
@@ -383,10 +383,10 @@ summary {
 </div>
 <div id="question-2" class="section level2">
 <h2>Question 2</h2>
-<p>This dataset is very comprehensive - it has data on every single day! We are going to simulate a scenario where you don’t have all of this data. Create two new tibbles:</p>
+<p>This dataset is very comprehensive - it has data on every single day! We are going to simulate two scenarios where you don’t have all of this data. Create two new tibbles:</p>
 <ol style="list-style-type: decimal">
 <li><code>random_sample</code>: a tibble created by taking a random sample of size 500 (using <code>sample_n()</code> from <code>US_births_2000_2014</code>).</li>
-<li><code>nonrandom_sample</code>: a tibble created by filtering <code>US_births_2000_2014</code> to observations from September only.</li>
+<li><code>nonrandom_sample</code>: a tibble created by filtering <code>US_births_2000_2014</code> to observations from Septembers only.</li>
 </ol>
 <p>Then, calculate three averages (just run them in the console or store the values, don’t print them to the PDF):</p>
 <ol style="list-style-type: decimal">
