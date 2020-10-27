@@ -1,0 +1,200 @@
+---
+title: 'Gov50: Practice Exam #2 Solutions'
+author: "Tyler Simko"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(rstanarm)
+library(fivethirtyeight)
+library(rsample)
+```
+
+The `US_births_2000_2014` dataset from the `fivethirtyeight` package contains information on how many people were born in the US on every day from 1/1/2000 until 12/31/2014. Let's use it for this practice exam!
+
+## Question 1
+
+Replicate the following plot below. Here are a few hints:
+
+1. Notice you have a plot by year with a summarized variable (median births) for each month. That is, a single row in the dataset for each month-year combination. How can you achieve this data structure?
+2. The theme is `theme_minimal()`.
+3. The month names are too long to show them all at once, so I used a `scale` function with `breaks` and `labels` arguments to display only the three below. Hint: the blank month labels are actually empty strings.
+4. If you notice your year plots are too close together, you can try `theme(panel.spacing = unit(0.8, "lines")` and change 0.8 to your liking.
+
+When you're done, take a look at the pattern by year. You'll notice some similarities. When are the months with the highest amount of births? The lowest?
+
+```{r}
+US_births_2000_2014 %>%
+  filter(year %in% 2003:2014) %>%
+  group_by(month, year) %>%
+  summarise(med_births = mean(births), .groups = "drop") %>%
+  ggplot(aes(x = month, y = med_births)) + 
+    geom_line() + 
+    facet_wrap(~year) + 
+    theme_minimal() + 
+    labs(title = "Number of US Births by Month",
+       x = "Month",
+       y = "Mean # of Births") + 
+  
+  # Remember that breaks and labels need to be the 
+  # same length! Here, I'm just taking the default 
+  # values of 1:12 in the dataset and recoding them to 
+  # strings. However, I'm printing empty strings for the 
+  # months that I don't want to appear!
+  
+    scale_x_continuous(breaks = 1:12,
+                     labels = c("Jan.", "", "", "",
+                                  "", "June", "", "",
+                                  "", "", "", "Dec.")) + 
+    theme(panel.spacing = unit(0.8, "lines"))
+
+```
+
+## Question 2
+
+This dataset is very comprehensive - it has data on every single day! We are going to simulate a scenario where you don't have all of this data. Create two new tibbles:
+
+1. `random_sample`: a tibble created by taking a random sample of size 500 (using `sample_n()` from `US_births_2000_2014`). 
+2. `nonrandom_sample`: a tibble created by filtering `US_births_2000_2014` to observations from September only.
+
+Then, calculate three averages (just run them in the console or store the values, don't print them to the PDF):
+
+1. The average number of births in `US_births_2000_2014`. 
+2. The average number of births in `random_sample`.
+3. The average number of births in `nonrandom_sample`.
+
+What do you notice about these estimates?
+
+```{r}
+# Remember sample_n works on a tibble, sample is on a vector
+
+random_sample <- US_births_2000_2014 %>% 
+  sample_n(size = 500)
+
+nonrandom_sample <- US_births_2000_2014 %>% 
+  filter(month == 9)
+```
+
+## Answer
+
+I notice that the `random_sample` average is closer to the overall dataset than the `nonrandom_sample`. This makes sense because the `nonrandom_sample` only contains days from September, which we saw in Question 1 was a month with a lot of births. However, September days alone aren't representative of the overall year, so this non-random sample has a higher average. The values change each time I run these chunks because the samples are random, but in general the random sample estimate is closer to the overall estimate than the non-random sample. 
+
+```{r, eval=FALSE}
+mean(US_births_2000_2014$births)
+mean(random_sample$births)
+mean(nonrandom_sample$births)
+```
+
+## Question 3
+
+Let's use bootstrap to calculate uncertainty around both of our sample estimates. Create a function called `bootstrap_estimate` that:
+
+1. Takes one tibble argument called `x`.
+2. Creates 1000 bootstrap samples of `x`.
+3. Estimates the average number of births in each sample and stores them in a column called `avg_births`.
+4. Returns this modified tibble.
+
+Then, run this function on your `random_sample` and `nonrandom_sample` objects separately and store the results into objects called `boot_random` and `boot_nonrandom`. Finally, using the quantile function on each of these objects, create 95\% confidence intervals for your estimates and store them in objects called `boot_ci_rand` and `boot_ci_nonrand`. Do either of your confidence intervals contain the true value? Which one?
+
+```{r}
+bootstrap_estimate <- function(x) {
+  
+  # You could also do this with the method used in 
+  # the book of selecting a single column and then
+  # using bootstrap. Both work! 
+  
+  x %>%
+    bootstraps(1000) %>%
+    mutate(boot = map(splits, ~ analysis(.))) %>%
+    mutate(birth_boot = map(boot, ~ pull(., births)),
+           avg_births = map_dbl(birth_boot, ~ mean(.)))
+}
+
+boot_random <- bootstrap_estimate(random_sample)
+boot_nonrandom <- bootstrap_estimate(nonrandom_sample)
+
+# these are CIs, but true value is mean(US_births_2000_2014$births)
+
+boot_ci_rand <- quantile(boot_random$avg_births, probs = c(0.025, 0.975))
+boot_ci_nonrand <- quantile(boot_nonrandom$avg_births, probs = c(0.025, 0.975))
+```
+
+## Question 4
+
+Create a plot that visualizes both of your bootstrap distributions alongside a vertical line for the true average number of births in the `US_births_2000_2014` dataset.
+
+To get both of your samples in the same tibble, you could use the `bind_rows` function to stack your datasets on top of each other. You could also use the `.id` argument to create a new column when binding that specifies which dataset each observationi in your final dataset comes from. For example, `bind_rows(object_A, object_B, .id = "sample_type")` would create a new column called `sample_type` that is `1` for rows in `object_A` and `2` for rows in `object_B`.
+
+Your plot must:
+
+1. Visualize both bootstrap distributions alongside the true answer.
+2. Clearly identify which distribution corresponds to which sample. One way to do this is by editing the legend with a `scale` function.
+3. Use colors and a theme other than the default.
+4. Have a title and appropriate axis labels.
+
+## Answer 
+
+This is one potential answer! 
+
+```{r}
+boot_random <- boot_random %>%
+  mutate(sample_type = "Random")
+
+boot_nonrandom <- boot_nonrandom %>%
+  mutate(sample_type = "Non-random")
+
+bind_rows(boot_random, boot_nonrandom, .id = "sample_type") %>%
+  ggplot(aes(x = avg_births, fill = sample_type)) + 
+    geom_density() + 
+    geom_vline(xintercept = mean(US_births_2000_2014$births), 
+               col = "blue", lty = "dotted") + 
+    annotate(geom = "text", 
+             x = 11600, 
+             y = 0.003, 
+             label = "True Answer", 
+             col = "blue") +
+    theme_classic() + 
+    scale_fill_manual(name = "Sample Type",
+                      values = c("coral", "pink"),
+                      breaks = c("1", "2"),
+                      labels = c("Random", "Non-random")) + 
+    labs(title = "Bootstrap Distributions from Two Samples",
+         subtitle = "Estimating Avg. # of US Births Per Day",
+         x = "Avg. births / day", y = "Density")
+```
+
+## Question 5
+
+Create and interpret two intercept-only models to estimate average number of births in the population using `stan_glm`. One model will use the `boot_random` dataset, while another will use the `boot_nonrandom` dataset. Create 95\% confidence intervals for both of these models. Then, respond to the following questions **for each model**. 
+
+1. Describe what each of your models is estimating. What are the samples and what is the population? Are each of your samples a good representation of the population? What are some positives and negatives of each?
+2. Describe and interpret your "Median" and "MAD_SD" values for each model. Interpret them substantively (i.e. what do the numbers represent in the context of the question) and statistically (i.e. describe what the numbers mean in the context of what your model estimated).
+3. Describe and interpret your confidence intervals.
+
+## Answer
+
+```{r}
+fit_random <- stan_glm(births ~ 1, 
+         data = random_sample, 
+         family = gaussian(), 
+         refresh = 0)
+
+rand_ci <- posterior_interval(fit_random, prob = 0.95)
+
+fit_nonrandom <- stan_glm(births ~ 1, 
+         data = nonrandom_sample, 
+         family = gaussian(), 
+         refresh = 0)
+
+nonrand_ci <- posterior_interval(fit_nonrandom, prob = 0.95)
+```
+
+1. The models above are estimating the average number of births per day in the US from the years 2000 to 2014. Here, the samples are the random and nonrandom samples we drew above. Our population is every day between 2000 and 2014. Some pros: both samples do a reasonable job at estimating the population, both have several hundred observations, and the conclusions that we drew from each were relatively close to the true answer. However, our random sample is better because it lacks the "high-birth" bias found in September. Our non-random sample assumes that September births are representative of births throughout the year, which we can see from Question 1 is not true.
+
+2. The median values (11132 and 11999 in my model runs) represent the median values **of the posterior distributions** estimated by each model. The median values **do not represent the median values in our sample**, which we could easily estimate with the median function. Instead, `stan_glm` attempts to estimate a posterior distribution for the population using the samples we have provided. Similarly, the MAD_SD values (102.7 and 109.0) essentially represent the spread of that posterior distribution. You can see the book (or Google) for a more formal definition of MAD_SD if you want one, but essentially it is measuring spread similarly to a standard deviation.
+
+3. My 95\% confidence intervals are [11130.92, 11541.23] for the random sample and [11780.81, 12220.07] for the non-random sample. The true value was 11350.07 (which we could estimate with `mean(US_births_2000_2014$births)`), so the random sample was more accurate. The Bayesian interpretation of confidence intervals is that there is a 95\% probability that the true (unknown) estimate is within the confidence interval given the evidence that we have in our sample. Remember that this is different from what is called the "frequentist" interpretation, which is also discussed in the book. We will use the Bayesian interpretation in this course, but it's important to be familiar with both!
+
+
