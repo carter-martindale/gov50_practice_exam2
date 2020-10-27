@@ -12,13 +12,13 @@ library(fivethirtyeight)
 library(rsample)
 ```
 
-The `US_births_2000_2014` dataset from the `fivethirtyeight` package contains information on how many people were born in the US on every day from 1/1/2000 until 12/31/2014. Let's use it for this practice exam!
+The `US_births_2000_2014` dataset from the `fivethirtyeight` package contains information on how many people were born in the US every day from 1/1/2000 until 12/31/2014. Let's use it for this practice exam!
 
 ## Question 1
 
 Replicate the following plot below. Here are a few hints:
 
-1. Notice you have a plot by year with a summarized variable (median births) for each month. That is, a single row in the dataset for each month-year combination. How can you achieve this data structure?
+1. Notice you have a plot by year with a summarized variable (mean births) for each month. That is, a single row in the dataset for each month-year combination. How can you achieve this data structure?
 2. The theme is `theme_minimal()`.
 3. The month names are too long to show them all at once, so I used a `scale` function with `breaks` and `labels` arguments to display only the three below. Hint: the blank month labels are actually empty strings.
 4. If you notice your year plots are too close together, you can try `theme(panel.spacing = unit(0.8, "lines")` and change 0.8 to your liking.
@@ -54,10 +54,10 @@ US_births_2000_2014 %>%
 
 ## Question 2
 
-This dataset is very comprehensive - it has data on every single day! We are going to simulate a scenario where you don't have all of this data. Create two new tibbles:
+This dataset is very comprehensive - it has data on every single day! We are going to simulate two scenarios where you don't have all of this data. Create two new tibbles:
 
 1. `random_sample`: a tibble created by taking a random sample of size 500 (using `sample_n()` from `US_births_2000_2014`). 
-2. `nonrandom_sample`: a tibble created by filtering `US_births_2000_2014` to observations from September only.
+2. `nonrandom_sample`: a tibble created by filtering `US_births_2000_2014` to observations from Septembers only.
 
 Then, calculate three averages (just run them in the console or store the values, don't print them to the PDF):
 
