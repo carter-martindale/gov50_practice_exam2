@@ -1,0 +1,115 @@
+---
+title: "practice_exam_2"
+author: "Carter Martindale"
+date: "10/28/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(fivethirtyeight)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(rsample)
+library(rstanarm)
+```
+
+## Question 1
+
+```{r q1}
+US_births_2000_2014 %>% 
+  group_by(year, month) %>% 
+  summarise(mean_births = mean(births), .groups = "drop") %>% 
+  ggplot(aes(x = month, y = mean_births)) +
+  geom_line() +
+  facet_wrap(~year) +
+  scale_x_continuous(breaks = c(1, 6, 12),
+                     labels = c("Jan.", "June",
+                                "Dec.")) +
+  labs(title = "Number of US Births by Month",
+       x = "Month",
+       y = "Mean # of Births") +
+  theme_minimal() +
+  theme(panel.spacing = unit(0.8, "lines"))
+```
+
+## Question 2
+
+```{r q2}
+
+random_sample <- sample_n(US_births_2000_2014, size = 500,
+                          replace = TRUE)
+
+nonrandom_sample <- US_births_2000_2014 %>% 
+  filter(month == 9)
+
+avg_births_plain <- US_births_2000_2014 %>% 
+  summarise(avg_births = mean(births))
+
+avg_births_random <- random_sample %>% 
+  summarise(avg_births = mean(births))
+
+avg_births_nonrandom <- nonrandom_sample %>% 
+  summarise(avg_births = mean(births))
+
+```
+## Question 3
+Then, run this function on your random_sample and nonrandom_sample objects separately and store the results into objects called boot_random and boot_nonrandom. Finally, using the quantile function on each of these objects, create 95% confidence intervals for your estimates and store them in objects called boot_ci_rand and boot_ci_nonrand. Do either of your confidence intervals contain the true value? Which one?
+```{r q3}
+bootstrap_estimate <- function(x) {
+  x %>% 
+    bootstraps(times = 1000) %>% 
+    mutate(boot = map(splits, ~ analysis(.))) %>% 
+    mutate(birth_boot = map(boot, ~ pull(., births))) %>% 
+  mutate(avg_births = map_dbl(birth_boot, ~ mean(.)))
+}
+
+boot_random <- bootstrap_estimate(random_sample)
+boot_nonrandom <- bootstrap_estimate(nonrandom_sample)
+
+boot_ci_rand <- quantile(boot_random$avg_births, probs = c(0.025, 0.975))
+boot_ci_nonrand <- quantile(boot_nonrandom$avg_births, probs = c(0.025, 0.975))
+```
+
+## Question 4
+```{r q4}
+boot_random_filtered <- boot_random %>% 
+  select(avg_births)
+boot_nonrandom_filtered <- boot_nonrandom %>% 
+  select(avg_births)
+
+boot_combined <- bind_rows(boot_random_filtered,
+                           boot_nonrandom_filtered,
+          .id = "sample_type")
+
+ggplot(boot_combined, aes(x = avg_births,
+                          y = after_stat(count/sum(count)),
+                          fill = sample_type)) +
+  geom_histogram(bins = 50) +
+  geom_vline(xintercept = 11350.07, lty = "dotted") +
+  scale_fill_manual(name = "Sample Type",
+                    values = c("salmon", "dodgerblue"),  
+                      labels = c("Random", "Nonrandom")) +
+  theme_minimal() +
+  labs(title = "Posterior Distribution of Average Births",
+       subtitle = "Random Samples are More Reliable",
+       x = "Average Births",
+       y = "Probability")
+```
+## Question 5
+```{r q5}
+
+stan_random <- stan_glm(data = boot_random,
+         avg_births ~ 1,
+         refresh = 0)
+
+stan_nonrandom <- stan_glm(data = boot_nonrandom,
+                           avg_births ~ 1,
+                           refresh = 0)
+
+rand_ci <- posterior_interval(stan_random, prob = 0.95)
+nonrand_ci <- posterior_interval(stan_nonrandom, prob = 0.95)
+stan_random
+```
+
